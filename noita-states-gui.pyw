@@ -169,10 +169,10 @@ def main():
         edit_config(configs, savespath, output)
         print()
 
-    print('''Backup: 0 (or empty)
-Load: 1
-Remove: 2
-Quit: 3''')
+    print('''Quit: 0
+Backup: 1 (or empty)
+Load: 2
+Remove: 3''')
 
     nam = {}
     firnam = []
@@ -196,10 +196,13 @@ Quit: 3''')
         if not os.path.exists(output):
             print("Path to output for backups has been removed or renamed.")
             continue
+
+        if sect == '0':
+            exit()
         
-        if sect == '0' or not sect:
+        elif sect == '1' or not sect:
             if not sect:
-                out.write('\033[A\033[2C0\r\033[B')
+                out.write('\033[A\033[2C1\r\033[B')
                 out.flush()
             try:
                 while True:
@@ -216,16 +219,17 @@ Quit: 3''')
                 savetar = pjoin(savespath, 'save'+savenum)
 
                 while True:
-                    savenam = 'save'+savenum
+                    base_nam = 'save' + savenum
                     if not savenum in firnam:
-                        nams = [b.replace('save'+savenum+('_' if b.startswith('save'+savenum+'_') else ''), '') for b in os.listdir(output) if b.startswith('save'+savenum)]
-                        nams = [(b[:b.index('_')] if '_' in b else b) for b in nams if b]
-                        cmds = nams
+                        bcs = [b.replace('save'+savenum+('_' if b.lower().startswith(('save'+savenum+'_').lower()) else ''), '') for b in os.listdir(output) if b.lower().startswith(('save'+savenum).lower())]
+                        bcs = [(b[:b.rfind('_')] if '_' in b and b[b.rfind('_')+1:].isdigit() else (b if not b.isdigit() else '')) for b in bcs]
+                        cmds = list(dict.fromkeys([b for b in bcs if b]))
                         nam[savenum] = input('Backup name (optional): ')
-                    savenam += ('_'+nam[savenum] if nam[savenum] else '')
-                    backups = [int(b[len(savenam)+1:]) for b in os.listdir(output) if savenam in b and b[len(savenam)+1:].isdigit()]
-                    bck = savenam in os.listdir(output)
-                    savenam += ('_'+str(max(backups)+1) if backups else ('_1' if bck else ''))
+                    base_nam += ('_' + nam[savenum] if nam[savenum] else '')
+                    base_low = base_nam.lower()
+                    backups = [int(b[len(base_nam)+1:]) for b in os.listdir(output) if b.lower().startswith(base_low+'_') and b[len(base_nam)+1:].isdigit()]
+                    bck = any(b.lower() == base_low for b in os.listdir(output))
+                    savenam = base_nam + ('_' + str(max(backups)+1) if backups else ('_1' if bck else ''))
                     cmds = ['y', 'n']
                     if input('"'+savenam+'"? (Y/n): ').startswith('n'):
                         if savenum in firnam:
@@ -244,7 +248,7 @@ Quit: 3''')
                 print('←')
                 continue
 
-        elif sect in ('1', '2'):
+        elif sect in ('2', '3'):
             try:
                 while True:
                     bcks = [(b.split('_')[0] if '_' in b else b).replace('save','') for b in os.listdir(output)]
@@ -252,7 +256,7 @@ Quit: 3''')
                     for b in bcks:
                         if b not in backs: backs.append(b)
                     cmds = backs
-                    backnum = input(('[Load]' if sect=='1' else '[Remove]')+' ('+', '.join(backs)+'): ')
+                    backnum = input(('[Load]' if sect=='2' else '[Remove]')+' ('+', '.join(backs)+'): ')
                     if not backnum: backnum = backs[0]
                     if backnum not in backs:
                         cand = [nu for nu in backs if nu==backnum or nu.endswith(backnum)]
@@ -264,7 +268,7 @@ Quit: 3''')
                     break
                 
                 while True:
-                    if not backnum in firbc:
+                    if not backnum in firbc or sect != '2':
                         while True:
                             bcs = [b.replace('save'+backnum+('_' if b.startswith('save'+backnum+'_') else ''), '') for b in os.listdir(output) if b.startswith('save'+backnum)]
                             bcs = [(b[:b.rfind('_')] if '_' in b and b[b.rfind('_')+1:].isdigit() else (b if not b.isdigit() else '')) for b in bcs]
@@ -293,12 +297,12 @@ Quit: 3''')
                         if backnum in firbc:
                             firbc.remove(backnum)
                         continue
-                    if not backnum in firbc: firbc.append(backnum)
+                    if not backnum in firbc and sect == '2': firbc.append(backnum)
                     break
 
                 backtar = pjoin(output, backnam)
 
-                if sect == '1':
+                if sect == '2':
                     while True:
                         cmds = saves
                         slotnum = input('Load to save slot ('+', '.join(saves)+'): ')
@@ -324,9 +328,6 @@ Quit: 3''')
             except KeyboardInterrupt:
                 print('←')
                 continue
-
-        elif sect == '3':
-            exit()
         
     
 
